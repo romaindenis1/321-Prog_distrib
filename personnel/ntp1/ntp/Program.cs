@@ -13,7 +13,7 @@ namespace ntp
     {
         static void Main(string[] args)
         {
-            string[] ntpServers = { "0.ch.pool.ntp.org", "1.ch.pool.ntp.org", "time.google.com"};
+            string[] ntpServers = { "0.ch.pool.ntp.org", "1.ch.pool.ntp.org", "time.google.com", "time.cloudfare.com"};
             
             var dateTime = DateTime.Now;
             Console.WriteLine("Machine Time : ");
@@ -30,24 +30,25 @@ namespace ntp
                 timeMessage[0] = 0x1B;
                 IPEndPoint ntpReference = new IPEndPoint(Dns.GetHostAddresses(server)[0], 123);
 
-                UdpClient client = new UdpClient();
-                client.Connect(ntpReference);
-                client.Send(timeMessage, timeMessage.Length);
-                timeMessage = client.Receive(ref ntpReference);
+                using (UdpClient client = new UdpClient())
+                {
+                    client.Connect(ntpReference);
+                    client.Send(timeMessage, timeMessage.Length);
+                    timeMessage = client.Receive(ref ntpReference);
 
-                ulong intPart = (ulong)timeMessage[40] << 24 | (ulong)timeMessage[41] << 16 | (ulong)timeMessage[42] << 8 | (ulong)timeMessage[43];
-                ulong fractPart = (ulong)timeMessage[44] << 24 | (ulong)timeMessage[45] << 16 | (ulong)timeMessage[46] << 8 | (ulong)timeMessage[47];
+                    ulong intPart = (ulong)timeMessage[40] << 24 | (ulong)timeMessage[41] << 16 | (ulong)timeMessage[42] << 8 | (ulong)timeMessage[43];
+                    ulong fractPart = (ulong)timeMessage[44] << 24 | (ulong)timeMessage[45] << 16 | (ulong)timeMessage[46] << 8 | (ulong)timeMessage[47];
 
-                var milliseconds = (intPart * 1000) + ((fractPart * 1000) / 0x100000000L);
-                var networkDateTime = DateTime.SpecifyKind(
-                (new DateTime(1900, 1, 1)).AddMilliseconds((long)milliseconds),
-                    DateTimeKind.Utc
-                );
+                    var milliseconds = (intPart * 1000) + ((fractPart * 1000) / 0x100000000L);
+                    var networkDateTime = DateTime.SpecifyKind(
+                    (new DateTime(1900, 1, 1)).AddMilliseconds((long)milliseconds),
+                        DateTimeKind.Utc
+                    );
+                    Console.WriteLine($"{server} Time");
+                    CalcDate(networkDateTime);
 
-                Console.WriteLine($"{server} Time");
-                CalcDate(networkDateTime);
-
-                client.Close();
+                    client.Close();
+                }
             }            
         }
         static void CalcDate(DateTime x)
